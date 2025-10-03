@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -9,5 +8,6 @@ import (
 	_ "observer/plugins/local"
 	_ "observer/plugins/mail"
 	_ "observer/plugins/network"
+	_ "observer/plugins/snmp"
 	_ "observer/plugins/sshcollect"
 )
