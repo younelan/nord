@@ -190,7 +190,20 @@ func (p *sshCollectPlugin) parseCollection(results map[string]string, def *Devic
 		case "hide":
 			// Do nothing
 		default: // "text"
-			collections[name] = strings.Join(lines, "\n")
+			// Store the raw text collection
+			textValue := strings.Join(lines, "\n")
+			collections[name] = textValue
+
+			// Also convert the collection into a metric so it's saved
+			// during collection (matches SNMP plugin behavior).
+			metric := map[string]interface{}{
+				"type":     "text",
+				"label":    name,
+				"value":    textValue,
+				"name":     name,
+				"category": cmdDef.Category,
+			}
+			metrics[name] = metric
 		}
 	}
 
