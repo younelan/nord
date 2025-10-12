@@ -1,0 +1,175 @@
+{
+    "prelude": {
+        "echo": {"command":"echo hello","waitfor":".*$"} 
+    },
+    "info": {
+        "cpu": {
+            "command": "grep 'cpu ' /proc/stat | awk '{print \"CPU Usage: \" $2+$3+$4+$5+$6+$7+$8}'",
+            "ewaitfor": ".*#",
+            "category": "CPU",
+            "format": "text"
+        },
+        "memory_total": {
+            "command": "grep MemTotal /proc/meminfo | awk '{print \"Total Memory: \" $2}'",
+            "ewaitfor": ".*#",
+            "category": "Memory",
+            "format": "text"
+        },
+        "memory_free": {
+            "command": "grep MemFree /proc/meminfo | awk '{print \"Free Memory: \" $2}'",
+            "ewaitfor": ".*#",
+            "category": "Memory",
+            "format": "text"
+        },
+        "memory_used": {
+            "command": "grep -E '^MemTotal|^MemFree|^Buffers|^Cached' /proc/meminfo | awk '{print \"Used Memory: \" $2}'",
+            "ewaitfor": ".*#",
+            "category": "Memory",
+            "format": "text"
+        },
+        "swap_total": {
+            "command": "grep SwapTotal /proc/meminfo | awk '{print \"Total Swap: \" $2}'",
+            "ewaitfor": ".*#",
+            "category": "Swap",
+            "format": "text"
+        },
+        "swap_free": {
+            "command": "grep SwapFree /proc/meminfo | awk '{print \"Free Swap: \" $2}'",
+            "ewaitfor": ".*#",
+            "category": "Swap",
+            "format": "text"
+        },
+        "disk_usage": {
+            "command": "df -h / | awk 'NR==2{print \"Disk Usage: \" $5}'",
+            "ewaitfor": ".*#",
+            "category": "Disk",
+            "format": "text"
+        },
+        "load_average": {
+            "command": "cat /proc/loadavg | awk '{print \"Load Average: \" $1, $2, $3}'",
+            "ewaitfor": ".*#",
+            "category": "Load",
+            "format": "text"
+        },
+        "network_interface": {
+            "command": "ifconfig -a | awk '/^[a-z]/{print $1 \" Interface\"}'",
+            "ewaitfor": ".*#",
+            "format": "ifconfig"
+        },
+        "network_connections_established": {
+            "command": "ss -t -a -n state established | wc -l | awk '{print \"Established Connections: \" $1}'",
+            "waitfor": ".*#",
+            "category": "Network",
+            "format": "text"
+        },
+        "network_connections_time_wait": {
+            "command": "ss -t -a -n state time-wait | wc -l | awk '{print \"Time Wait Connections: \" $1}'",
+            "ewaitfor": ".*#",
+            "category": "Network",
+            "format": "text"
+        },
+        "network_connections_closed": {
+            "command": "ss -t -a -n state closed | wc -l | awk '{print \"Closed Connections: \" $1}'",
+            "ewaitfor": ".*#",
+            "category": "Network",
+            "format": "text"
+        },
+        "processes_running": {
+            "command": "ps -e --no-headers | wc -l | awk '{print \"Running Processes: \" $1}'",
+            "ewaitfor": ".*#",
+            "category": "Processes",
+            "format": "text"
+        },
+        "uptime": {
+            "command": "uptime | awk '{print \"Uptime: \" $3}'",
+            "waitfor": ".*#",
+            "category": "System",
+            "format": "text"
+        },
+        "users_logged_in": {
+            "command": "who | wc -l | awk '{print \"Logged in Users: \" $1}'",
+            "ewaitfor": ".*#",
+            "category": "Users",
+            "format": "text"
+        },
+        "system_version": {
+            "command": "uname -a | awk '{print \"System Version: \" $3}'",
+            "ewaitfor": ".*#",
+            "category": "System",
+            "format": "text"
+        },
+        "system_architecture": {
+            "command": "uname -m | awk '{print \"System Architecture: \" $1}'",
+            "ewaitfor": ".*#",
+            "category": "System",
+            "format": "text"
+        },
+        "kernel_version": {
+            "command": "uname -r | awk '{print \"Kernel Version: \" $1}'",
+            "ewaitfor": ".*#",
+            "category": "System",
+            "format": "text"
+        },
+        "available_memory": {
+            "command": "grep MemAvailable /proc/meminfo | awk '{print \"Available Memory: \" $2}'",
+            "ewaitfor": ".*#",
+            "category": "Memory",
+            "format": "text"
+        },
+        "total_processes": {
+            "command": "ps -e | wc -l | awk '{print \"Total Processes: \" $1}'",
+            "ewaitfor": ".*#",
+            "category": "Processes",
+            "format": "text"
+        },
+        "tcp_connections": {
+            "command": "cat /proc/net/tcp* /proc/net/tcp6* | wc -l | awk '{print \"TCP Connections: \" $1}'",
+            "ewaitfor": ".*#",
+            "category": "Network",
+            "format": "text"
+        },
+        "udp_connections": {
+            "command": "cat /proc/net/udp* /proc/net/udp6* | wc -l | awk '{print \"UDP Connections: \" $1}'",
+            "ewaitfor": ".*#",
+            "category": "Network",
+            "format": "text"
+        },
+        "total_users": {
+            "command": "awk -F: '$3 >= 1000 && $1 != \"nobody\"' /etc/passwd | wc -l | awk '{print \"Total Users: \" $1}'",
+            "ewaitfor": ".*#",
+            "category": "Users",
+            "format": "text"
+        },
+        "logged_in_users": {
+            "command": "who | awk '{print \"Logged in Users: \" $1}' | sort | uniq | wc -l",
+            "ewaitfor": ".*#",
+            "category": "Users",
+            "format": "text"
+        },
+        "last_boot_time": {
+            "command": "who -b | awk '{print \"Last Boot Time: \" $3, $4}'",
+            "ewaitfor": ".*#",
+            "category": "System",
+            "format": "text"
+        },
+        "kernel_info": {
+            "command": "cat /proc/version | awk '{print \"Kernel Info: \" $1, $2, $3, $4}'",
+            "ewaitfor": ".*$",
+            "category": "System",
+            "format": "text"
+        },
+        "system_uptime": {
+            "command": "uptime -s | awk '{print \"System Uptime: \" $1}'",
+            "ewaitfor": ".*$",
+            "category": "System",
+            "format": "text"
+        }
+    },
+    "outro": {
+        "exit": {
+            "command": "exit",
+            "waitfor": "[a-z]+#"
+        }
+    }
+}
+

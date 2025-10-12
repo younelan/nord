@@ -1,0 +1,24 @@
+{
+    "oids": [
+        {
+            "oid": ".1.3.6.1.2.1.1.1.0",
+            "name": "System Description",
+            "format": "string"
+        },
+        {
+            "oid": ".1.3.6.1.2.1.1.3.0",
+            "name": "Up Time",
+            "format": "timeticks"
+        },
+        {
+            "oid": ".1.3.6.1.2.1.1.5.0",
+            "name": "System Name",
+            "format": "string"
+        },
+        {
+            "oid": ".1.3.6.1.2.1.1.6.0",
+            "name": "System Location",
+            "format": "string"
+        }
+    ]
+}

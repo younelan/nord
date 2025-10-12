@@ -1,0 +1,105 @@
+{
+    "prelude": {
+        "enable": {"command": "enable","waitfor": "user.*#"},
+        "show": {"command": "show","waitfor": "user.*#"}
+    },
+    "info":  {
+        "mem": {"command": "mem", "category": "system","waitfor": "user.*#",
+                "format": "single-column",
+                "replacements":  {
+                    "Mem": ""
+                }
+        },
+        "cpu": {"command": "cpu","waitfor": "user.*#",
+                "category": "system","format": "single-column",
+                "replacements":  {
+                    "Current CPU Usage": "CPU"
+                }
+        },
+        "wan":  {
+            "command": "wan all status","waitfor": "user.*#",
+            "category": "wan","format": "single-column",
+            "replacements": {
+                "Enable/Disable":"Status",
+                "Enable":"Up",
+                "Disable":"Down", 
+                "Not Available": "NA",
+                "Default Gateway": "GW",
+                "Name": ""
+            }
+        },
+        "voice":  {
+            "command": "voice status","waitfor": "user.*#",
+            "category": "voice","format": "single-column",
+            "replacements": {
+                "Status":"",
+                "Enabled":"Up",
+                "Disabled":"Down"
+            }
+        },
+        "dns": {"command": "dns","waitfor": "user.*#",
+        "category": "DNS","format": "single-column",
+                    "replacements": {
+                        "DNS": "",
+                        "Not Available": "NA",
+                        " Name": ""
+                    }
+    
+        }, 
+        "interface": {"command": "network interface all","waitfor": "user.*#","format": "ifconfig"},
+        "sysinfo": {"command": "sysinfo","waitfor": "user.*#",
+                    "category": "Info","format": "single-column",
+                    "replacements": {
+                        "Number of ": "",
+                        "Product": "",
+                        "MACAddress = ": "",
+                        "AC": "MAC",
+                        "System ": "",
+                        "Ethernet Port": "Eth",
+                        " day(s),": "D",
+                        "get_region} Region Code": "region"
+                    }
+        },
+        "swversion": {"command": "swversion","waitfor": "user.*#"},
+        "ridump": {"command": "ridump","waitfor": "user.*#","category": "ridump",
+                    "format": "single-column",
+                    "replacements":  {
+                        "Not Available": "NA",
+                        "the ": "",
+                        "HardwareVersion": "HW",
+                        "success": "",
+                        "get mac ac": "MAC",
+                        "YPSerialNum": "Serial",
+                        "PartNumber": "Part"
+
+                    }
+                },
+        "sysmon": {"command": "sysmon","waitfor": "user.*#","format": "hide"},
+        "route": {"command": "route","waitfor": "user.*#","format": "route"},
+        "lan-dhcp-config": {"command": "lan ip dhcp","waitfor": "user.*#",
+                            "category": "dhcpd","format": "single-column",
+                            "delimiter": " ",
+                            "replacements": {
+                                "option lease": "opt_lease",
+                                "opt dns": "opt_dns",
+                                "opt router": "opt_router",
+                                "start": "dhcp_start",
+                                "end": "dhcp_end",
+                                "dev_cate Camera": "dev_cate_Camera",
+                                "dev_cate Phone": "dev_cate_Phone",
+                                "dev_cate STB": "dev_cate_STB",
+                                "dev_cate Computer": "dev_cate_Computer",
+                                "lan ip": "lan ip"
+
+                            }
+                        },
+        "lan-dhcp-hosts": {"command": "lan ip hosts","waitfor": "user.*#"},
+        "lan-stats": {"command": "lan stats","waitfor": "user.*#"},
+        "arp": {"command": "arp","waitfor": "user.*#"}
+    },
+    "outro": {
+        "exit": {"command": "exit","waitfor": "{a-z}+#"},
+        "logout": {"command": "logout"}
+    }
+
+}

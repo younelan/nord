@@ -1,0 +1,37 @@
+{
+    "prelude": {},
+    "info": {
+        "cpu": {"command": "grep 'cpu ' /proc/stat", "waitfor": ".*#", "category": "CPU", "format": "text"},
+        "memory_total": {"command": "grep MemTotal /proc/meminfo", "waitfor": ".*#", "category": "Memory", "format": "text"},
+        "memory_free": {"command": "grep MemFree /proc/meminfo", "waitfor": ".*#", "category": "Memory", "format": "text"},
+        "memory_used": {"command": "grep -E '^MemTotal|^MemFree|^Buffers|^Cached' /proc/meminfo", "waitfor": ".*#", "category": "Memory", "format": "text"},
+        "swap_total": {"command": "grep SwapTotal /proc/meminfo", "waitfor": ".*#", "category": "Swap", "format": "text"},
+        "swap_free": {"command": "grep SwapFree /proc/meminfo", "waitfor": ".*#", "category": "Swap", "format": "text"},
+        "disk_usage": {"command": "df -h /", "waitfor": ".*#", "category": "Disk", "format": "text"},
+        "load_average": {"command": "cat /proc/loadavg", "waitfor": ".*#", "category": "Load", "format": "text"},
+        "network_interface": {"command": "ifconfig -a", "waitfor": ".*#", "format": "ifconfig"},
+        "network_connections_established": {"command": "ss -t -a -n state established", "waitfor": ".*#", "category": "Network", "format": "text"},
+        "network_connections_time_wait": {"command": "ss -t -a -n state time-wait", "waitfor": ".*#", "category": "Network", "format": "text"},
+        "network_connections_closed": {"command": "ss -t -a -n state closed", "waitfor": ".*#", "category": "Network", "format": "text"},
+        "processes_running": {"command": "ps -e --no-headers", "waitfor": ".*#", "category": "Processes", "format": "text"},
+        "uptime": {"command": "uptime", "waitfor": ".*#", "category": "System", "format": "text"},
+        "users_logged_in": {"command": "who", "waitfor": ".*#", "category": "Users", "format": "text"},
+        "system_version": {"command": "uname -a", "waitfor": ".*#", "category": "System", "format": "text"},
+        "system_architecture": {"command": "uname -m", "waitfor": ".*#", "category": "System", "format": "text"},
+        "kernel_version": {"command": "uname -r", "waitfor": ".*#", "category": "System", "format": "text"},
+        "available_memory": {"command": "grep MemAvailable /proc/meminfo", "waitfor": ".*#", "category": "Memory", "format": "text"},
+        "total_processes": {"command": "ps -e", "waitfor": ".*#", "category": "Processes", "format": "text"},
+        "tcp_connections": {"command": "cat /proc/net/tcp* /proc/net/tcp6*", "waitfor": ".*#", "category": "Network", "format": "text"},
+        "udp_connections": {"command": "cat /proc/net/udp* /proc/net/udp6*", "waitfor": ".*#", "category": "Network", "format": "text"},
+        "total_users": {"command": "awk -F: '$3 >= 1000 && $1 != \"nobody\"' /etc/passwd", "waitfor": ".*#", "category": "Users", "format": "text"},
+        "logged_in_users": {"command": "who | awk '{print $1}' | sort | uniq", "waitfor": ".*#", "category": "Users", "format": "text"},
+        "last_boot_time": {"command": "who -b", "waitfor": ".*#", "category": "System", "format": "text"},
+        "kernel_info": {"command": "cat /proc/version", "waitfor": ".*#", "category": "System", "format": "text"},
+        "system_uptime": {"command": "uptime -s", "waitfor": ".*#", "category": "System", "format": "text"},
+        "total_memory": {"command": "grep MemTotal /proc/meminfo", "waitfor": ".*#", "category": "Memory", "format": "text"},
+        "total_swap": {"command": "grep SwapTotal /proc/meminfo", "waitfor": ".*#", "category": "Swap", "format": "text"}
+    },
+    "outro": {
+        "exit": {"command": "exit", "waitfor": "[a-z]+#"}
+    }
+}
