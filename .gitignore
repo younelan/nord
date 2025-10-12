@@ -25,3 +25,7 @@ vendor/
 # Output files from the observer tool
 collection.json
 perception.json
+bin
+debug
+release
+observer
