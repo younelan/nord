@@ -8,6 +8,7 @@ import (
 
 	"observer/base"
 	"observer/plugins"
+	_ "observer/plugins/textui" // Import for side effect (plugin registration)
 )
 
 func main() {
@@ -17,6 +18,7 @@ func main() {
 	collect := flag.Bool("collect", false, "Run data collection using the 'collection' plugin")
 	perception := flag.Bool("perception", false, "Run network discovery (perception) using the 'network' plugin")
 	remote := flag.Bool("remote", false, "Send collected data to remote server(s) using the 'api' plugin")
+	ui := flag.Bool("ui", false, "Start the Text User Interface (TUI)")
 
 	flag.Parse()
 
@@ -29,6 +31,16 @@ func main() {
 	}
 
 	fmt.Println("Observer Control Tool")
+
+	// Handle the --ui flag
+	if *ui {
+		err := controller.OnCommand("textui", map[string]string{"action": "start"})
+		if err != nil {
+			fmt.Printf("Error starting TUI: %v\n", err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 
 	// Handle the --collect flag as a shortcut
 	if *collect {
