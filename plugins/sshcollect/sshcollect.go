@@ -1,4 +1,3 @@
-
 package sshcollect
 
 import (
@@ -54,6 +53,16 @@ func (p *sshCollectPlugin) OnCollect(options map[string]interface{}) (map[string
 	hostAddr, _ := credsMap["host"].(string)
 	portStr, _ := credsMap["port"].(string)
 
+	// Determine host label (name or address) for log prefix
+	hostLabel := hostAddr
+	if hmap, ok := options["host"].(map[string]interface{}); ok {
+		if hn, ok := hmap["name"].(string); ok && hn != "" {
+			hostLabel = hn
+		} else if ha, ok := hmap["address"].(string); ok && ha != "" {
+			hostLabel = ha
+		}
+	}
+
 	// Safely get deviceType, defaulting to "nokia2425" if not found or not a string
 	var deviceType string
 	if dt, ok := credsMap["type"].(string); ok && dt != "" {
@@ -92,7 +101,8 @@ func (p *sshCollectPlugin) OnCollect(options map[string]interface{}) (map[string
 
 	_, _ = sess.WaitFor("#|>") // Clear banner
 
-	commandResults, err := p.runCommandGroups(sess, deviceDef)
+	// Pass hostLabel so logs are prefixed with the host identity
+	commandResults, err := p.runCommandGroups(sess, deviceDef, hostLabel)
 	if err != nil {
 		return nil, fmt.Errorf("error during command execution: %w", err)
 	}
@@ -100,13 +110,14 @@ func (p *sshCollectPlugin) OnCollect(options map[string]interface{}) (map[string
 	return p.parseCollection(commandResults, deviceDef), nil
 }
 
-func (p *sshCollectPlugin) runCommandGroups(sess *InteractiveSession, def *DeviceDef) (map[string]string, error) {
+func (p *sshCollectPlugin) runCommandGroups(sess *InteractiveSession, def *DeviceDef, hostLabel string) (map[string]string, error) {
 	results := make(map[string]string)
 	commandGroups := []map[string]CommandDef{def.Prelude, def.Info, def.Outro}
 
 	for _, group := range commandGroups {
 		for name, cmd := range group {
-			fmt.Printf("        |_ Running SSH command: %s\n", cmd.Command)
+			// Prefix each SSH command with the host label for clarity
+			fmt.Printf("  |_ %s: Running SSH command: %s\n", hostLabel, cmd.Command)
 			if err := sess.Send(cmd.Command); err != nil {
 				return nil, err
 			}
@@ -118,7 +129,8 @@ func (p *sshCollectPlugin) runCommandGroups(sess *InteractiveSession, def *Devic
 
 			output, err := sess.WaitFor(cmd.WaitFor)
 			if err != nil {
-				fmt.Printf("            !_ Warning: %v\n", err)
+				// Prefix warning with the host label
+				fmt.Printf("            !_ %s | Warning: %v\n", hostLabel, err)
 			}
 			// Store raw output for parsing later
 			if name != "exit" && name != "logout" { // Don't store output of logout commands
