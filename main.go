@@ -30,7 +30,7 @@ func main() {
 		controller.AddPlugin(p)
 	}
 
-	fmt.Println("Observer Control Tool")
+	fmt.Println("Nord Observability, Reliability & Discovery")
 
 	// Handle the --ui flag
 	if *ui {
