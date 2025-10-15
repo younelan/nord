@@ -1,3 +1,4 @@
+tdc
 # Go build artifacts
 *.exe
 *.dll
@@ -29,3 +30,7 @@ bin
 debug
 release
 observer
+data
+nord
+.DS_Store
+
