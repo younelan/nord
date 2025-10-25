@@ -6,6 +6,7 @@ tdc
 *.dylib
 *.test
 *.out
+old
 
 # Dependency directories
 vendor/
