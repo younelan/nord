@@ -4,8 +4,6 @@ package plugin
 import (
 	"fmt"
 	"strings"
-
-	"observer/store"
 )
 
 // Plugin is the interface that all plugins must implement.
@@ -14,6 +12,7 @@ type Plugin interface {
 	Init(controller *Controller)
 	OnCommand(args map[string]string) error
 	OnUpdate() error
+	// OnCollect is the new interface for collection plugins
 	OnCollect(options map[string]interface{}) (map[string]interface{}, error)
 }
 
@@ -47,10 +46,9 @@ func (p *BasePlugin) OnCollect(options map[string]interface{}) (map[string]inter
 	return nil, fmt.Errorf("OnCollect not implemented")
 }
 
-// Controller manages all the registered plugins and shared resources.
+// Controller manages all the registered plugins.
 type Controller struct {
 	Plugins map[string]Plugin
-	Store   store.Store // nil when no database is configured
 }
 
 // NewController creates and returns a new Controller.

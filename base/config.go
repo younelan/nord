@@ -1,12 +1,20 @@
 
 package plugin
 
+// DatabaseConfig holds the connection URL for the metrics store.
+// Supported URL schemes: sqlite://, postgres://, mysql://
+// Leave URL empty to disable database persistence.
+type DatabaseConfig struct {
+	URL string `json:"url"`
+}
+
 // Config is the root configuration structure.
 type Config struct {
-	Hosts       map[string]Host        `json:"hosts"`
-	Credentials map[string]Credential `json:"credentials"`
-	Remote      RemoteConfig           `json:"remote"`
+	Hosts       map[string]Host          `json:"hosts"`
+	Credentials map[string]Credential    `json:"credentials"`
+	Remote      RemoteConfig             `json:"remote"`
 	Perception  map[string]PerceptionEnv `json:"perception"`
+	Database    DatabaseConfig           `json:"database"`
 }
 
 // Host defines a single machine to be monitored.
