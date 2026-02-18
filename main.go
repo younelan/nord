@@ -2,12 +2,14 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 
-	"observer/base"
+	plugin "observer/base"
 	"observer/plugins"
+	"observer/store"
 	_ "observer/plugins/textui" // Import for side effect (plugin registration)
 )
 
@@ -24,6 +26,24 @@ func main() {
 
 	// Create a new controller
 	controller := plugin.NewController()
+
+	// Open database store if configured.
+	// Parse only the database section to avoid errors from complex collect fields.
+	if cfgData, err := os.ReadFile("data/config.json"); err == nil {
+		var dbCfg struct {
+			Database plugin.DatabaseConfig `json:"database"`
+		}
+		if json.Unmarshal(cfgData, &dbCfg) == nil && dbCfg.Database.URL != "" {
+			st, err := store.Open(dbCfg.Database.URL)
+			if err != nil {
+				fmt.Printf("Warning: could not open database: %v\n", err)
+			} else if st != nil {
+				controller.Store = st
+				defer st.Close()
+				fmt.Printf("Database connected: %s\n", dbCfg.Database.URL)
+			}
+		}
+	}
 
 	// Register all plugins that have been imported.
 	for _, p := range plugins.All {
@@ -81,7 +101,6 @@ func main() {
 		}
 		args := make(map[string]string)
 		args["action"] = *action
-		// Add other non-flag arguments if any
 		args["args"] = flag.Arg(0)
 
 		err := controller.OnCommand(*pluginName, args)
