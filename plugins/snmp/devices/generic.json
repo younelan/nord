@@ -20,5 +20,21 @@
             "name": "System Location",
             "format": "string"
         }
+    ],
+    "tables": [
+        {
+            "base_oid": "1.3.6.1.2.1.2.2.1",
+            "type": "interface",
+            "columns": [
+                { "sub_oid": "2",  "name": "ifDescr",       "format": "string",   "role": "name" },
+                { "sub_oid": "3",  "name": "ifType",        "format": "integer",  "role": "type" },
+                { "sub_oid": "5",  "name": "ifSpeed",       "format": "gauge",    "role": "speed" },
+                { "sub_oid": "6",  "name": "ifPhysAddress", "format": "physaddr", "role": "mac" },
+                { "sub_oid": "7",  "name": "ifAdminStatus", "format": "ifstatus", "role": "admin_status" },
+                { "sub_oid": "8",  "name": "ifOperStatus",  "format": "ifstatus", "role": "oper_status" },
+                { "sub_oid": "10", "name": "ifInOctets",    "format": "counter",  "role": "metric" },
+                { "sub_oid": "16", "name": "ifOutOctets",   "format": "counter",  "role": "metric" }
+            ]
+        }
     ]
 }
