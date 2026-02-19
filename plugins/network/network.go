@@ -10,6 +10,7 @@ import (
 	"net"
 	"observer/base"
 	"observer/plugins"
+	"observer/store"
 	"os/exec"
 	"strings"
 	"time"
@@ -202,8 +203,61 @@ func (p *networkPlugin) runPerception() error {
 		return fmt.Errorf("failed to write perception.json: %w", err)
 	}
 
+	// 7. Persist discovered hosts and their detected services to the store.
+	if p.Controller.Store != nil {
+		p.writePerceptionToStore(discoveredHosts)
+	}
+
 	fmt.Println("--- Network Perception Finished ---")
 	return nil
+}
+
+// writePerceptionToStore persists each discovered host and its detected services.
+// Each detected service (e.g. "network.ping") is recorded as a status=up metric
+// under category "discovery" so the hosts table is populated and detection history
+// is queryable.
+func (p *networkPlugin) writePerceptionToStore(discoveredHosts map[string]interface{}) {
+	now := time.Now()
+	var records []store.MetricRecord
+
+	for ip, hostAny := range discoveredHosts {
+		hostMap, ok := hostAny.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		services, _ := hostMap["collect"].([]string)
+
+		for _, svc := range services {
+			parts := strings.SplitN(svc, ".", 2)
+			pluginName := parts[0]
+			action := ""
+			if len(parts) == 2 {
+				action = parts[1]
+			}
+			v := 1.0
+			records = append(records, store.MetricRecord{
+				HostKey:     ip,
+				HostName:    ip,
+				HostAddress: ip,
+				Plugin:      pluginName,
+				Name:        action,
+				Category:    "discovery",
+				MetricType:  "status",
+				Value:       "up",
+				ValueNum:    &v,
+				CollectedAt: now,
+			})
+		}
+	}
+
+	if len(records) == 0 {
+		return
+	}
+	if err := p.Controller.Store.WriteBatch(records); err != nil {
+		fmt.Printf("  !_ store: perception WriteBatch error: %v\n", err)
+	} else {
+		fmt.Printf("  |_ store: wrote %d perception records\n", len(records))
+	}
 }
 
 // testHost runs detection tests on a given IP.

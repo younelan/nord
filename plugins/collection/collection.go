@@ -6,8 +6,11 @@ import (
 	"io/ioutil"
 	"observer/base"
 	"observer/plugins"
+	snmpplugin "observer/plugins/snmp"
+	"observer/store"
 	"strings"
 	"sync"
+	"time"
 )
 
 // --- Plugin Implementation ---
@@ -146,7 +149,7 @@ func (p *collectionPlugin) loadConfig() error {
 	return nil
 }
 
-// collectTask handles a single task (check) for a host
+// collectTask handles a single task (check) for a host.
 func (p *collectionPlugin) collectTask(hostName string, host plugin.Host, task plugin.CollectTask, taskResultsChan chan<- map[string]interface{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -161,22 +164,18 @@ func (p *collectionPlugin) collectTask(hostName string, host plugin.Host, task p
 		action = strings.TrimSpace(parts[1])
 	} else {
 		pluginName = strings.TrimSpace(parts[0])
-		action = "all" // PHP default
+		action = "all"
 	}
 
-	// Prefix each check with the host name
 	fmt.Printf("  |_ %s : %s.%s\n", hostName, pluginName, action)
 
-	// Try lowercase key for lookup robustness
 	pluginKey := strings.ToLower(pluginName)
 	targetPlugin, exists := p.Controller.Plugins[pluginKey]
 	if !exists {
-		// Include host for clarity
 		fmt.Printf("  !_ %s: Plugin '%s' not found.\n", hostName, pluginName)
 		return
 	}
 
-	// Build full host map (mirror PHP passing the whole host)
 	hostMap := map[string]interface{}{}
 	if b, err := json.Marshal(host); err == nil {
 		_ = json.Unmarshal(b, &hostMap)
@@ -184,7 +183,6 @@ func (p *collectionPlugin) collectTask(hostName string, host plugin.Host, task p
 		hostMap = map[string]interface{}{"address": host.Address}
 	}
 
-	// Prepare options for the plugin call, include collection like PHP
 	pluginOptions := map[string]interface{}{
 		"host":   hostMap,
 		"action": action,
@@ -193,7 +191,6 @@ func (p *collectionPlugin) collectTask(hostName string, host plugin.Host, task p
 		},
 	}
 
-	// Add credentials if specified for the task
 	if c := strings.TrimSpace(task.Credentials); c != "" {
 		pluginOptions["collection"].(map[string]interface{})["credentials"] = c
 		if cred, ok := p.config.Credentials[c]; ok {
@@ -205,24 +202,24 @@ func (p *collectionPlugin) collectTask(hostName string, host plugin.Host, task p
 				"type": cred.Type,
 			}
 		} else {
-			// Include host for clarity
 			fmt.Printf("          !_ %s | Credentials '%s' not found.\n", hostName, c)
 		}
 	}
 
 	result, err := targetPlugin.OnCollect(pluginOptions)
 	if err != nil {
-		// Include host for clarity
 		fmt.Printf("          !_ %s | Error: %v\n", hostName, err)
 		return
 	}
 
 	if result != nil {
+		// Tag the result with the plugin name so the store writer can record it.
+		result["__plugin"] = pluginName
 		taskResultsChan <- result
 	}
 }
 
-// collectHost handles data collection for a single host
+// collectHost handles data collection for a single host.
 func (p *collectionPlugin) collectHost(hostName string, host plugin.Host, resultsChan chan<- map[string]interface{}, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -230,7 +227,6 @@ func (p *collectionPlugin) collectHost(hostName string, host plugin.Host, result
 
 	hostMetrics := make(map[string]interface{})
 
-	// Build task list; start with typed then merge any missing from rawCollect (by host), then by address
 	tasks := make([]plugin.CollectTask, 0, len(host.Collect))
 	metricsSet := map[string]struct{}{}
 
@@ -263,7 +259,6 @@ func (p *collectionPlugin) collectHost(hostName string, host plugin.Host, result
 		}
 	}
 
-	// If still empty or incomplete, merge by address as well
 	if raw, ok := p.rawCollectByAddr[strings.TrimSpace(host.Address)]; ok && len(raw) > 0 {
 		for _, mm := range raw {
 			m, _ := mm["metric"].(string)
@@ -283,39 +278,50 @@ func (p *collectionPlugin) collectHost(hostName string, host plugin.Host, result
 		}
 	}
 
-	// Create WaitGroup and results channel for tasks
 	var taskWg sync.WaitGroup
 	taskResultsChan := make(chan map[string]interface{}, len(tasks))
 
-	// Start goroutines for each task
 	for _, task := range tasks {
 		taskWg.Add(1)
 		go p.collectTask(hostName, host, task, taskResultsChan, &taskWg)
 	}
 
-	// Wait for all task goroutines to complete
 	taskWg.Wait()
 	close(taskResultsChan)
 
-	// Collect results from tasks (flatten metrics)
+	var hostInterfaces []map[string]interface{}
+
 	for taskResult := range taskResultsChan {
-		// Only merge the inner metrics map entries
+		pluginTag, _ := taskResult["__plugin"].(string)
+
 		if metricsAny, ok := taskResult["metrics"]; ok {
 			if metricsMap, ok := metricsAny.(map[string]interface{}); ok {
 				for label, metric := range metricsMap {
+					// Propagate plugin name into each metric map for store writer.
+					if pluginTag != "" {
+						if m, ok := metric.(map[string]interface{}); ok {
+							m["__plugin"] = pluginTag
+						}
+					}
 					hostMetrics[label] = metric
 				}
 			}
 		}
-		// Ignore other keys (e.g., collections) for now to match lincol.json shape
+
+		// Collect interface entity data returned by SNMP table walks.
+		if ifacesAny, ok := taskResult["interfaces"]; ok {
+			if ifaces, ok := ifacesAny.([]map[string]interface{}); ok {
+				hostInterfaces = append(hostInterfaces, ifaces...)
+			}
+		}
 	}
 
-	// Send result to channel (nest metrics under metrics.metrics)
 	resultsChan <- map[string]interface{}{
 		hostName: map[string]interface{}{
 			"metrics": map[string]interface{}{
 				"metrics": hostMetrics,
 			},
+			"__interfaces": hostInterfaces,
 		},
 	}
 }
@@ -337,37 +343,40 @@ func (p *collectionPlugin) collectData() error {
 			fmt.Println(". |_ Merging hosts from perception.json")
 			for ip, host := range perceptionData.Hosts {
 				if _, exists := p.config.Hosts[ip]; !exists {
-					p.config.Hosts[ip] = host // Add the host if it doesn't already exist
+					p.config.Hosts[ip] = host
 				}
 			}
 		}
 	} else {
 		fmt.Println("  |_ perception.json not found, skipping merge.")
 	}
-	// --- End merge ---
 
 	finalResults := make(map[string]interface{})
 
-	// Create WaitGroup and results channel
 	var wg sync.WaitGroup
 	resultsChan := make(chan map[string]interface{}, len(p.config.Hosts))
 
-	// Start goroutines for each host
 	for hostName, host := range p.config.Hosts {
 		wg.Add(1)
 		go p.collectHost(hostName, host, resultsChan, &wg)
 	}
 
-	// Wait for all goroutines to complete
 	wg.Wait()
 	close(resultsChan)
 
-	// Collect results from channel
 	for hostResult := range resultsChan {
 		for hostName, metrics := range hostResult {
 			finalResults[hostName] = metrics
 		}
 	}
+
+	// --- Write to store ---
+	if p.Controller.Store != nil {
+		p.writeToStore(finalResults)
+	}
+
+	// --- Strip internal tags and write JSON ---
+	p.stripInternalTags(finalResults)
 
 	jsonData, err := json.MarshalIndent(finalResults, "", "  ")
 	if err != nil {
@@ -381,4 +390,132 @@ func (p *collectionPlugin) collectData() error {
 
 	fmt.Println("--- Collection finished, results saved to collection.json ---")
 	return nil
+}
+
+// writeToStore builds MetricRecords and InterfaceRecords from finalResults and persists them.
+func (p *collectionPlugin) writeToStore(finalResults map[string]interface{}) {
+	now := time.Now()
+	var metricRecords []store.MetricRecord
+	var ifaceRecords []store.InterfaceRecord
+
+	for hostKey, hostDataAny := range finalResults {
+		hostDataMap, ok := hostDataAny.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Look up host inventory info.
+		hostName := hostKey
+		hostAddress := ""
+		if h, ok := p.config.Hosts[hostKey]; ok {
+			if h.Name != "" {
+				hostName = h.Name
+			}
+			hostAddress = h.Address
+		}
+
+		// --- Metric records ---
+		metricsWrapper, ok := hostDataMap["metrics"].(map[string]interface{})
+		if ok {
+			metricsMap, ok := metricsWrapper["metrics"].(map[string]interface{})
+			if ok {
+				for _, metricAny := range metricsMap {
+					m, ok := metricAny.(map[string]interface{})
+					if !ok {
+						continue
+					}
+
+					pluginTag, _ := m["__plugin"].(string)
+					metricName, _ := m["name"].(string)
+					if metricName == "" {
+						metricName, _ = m["label"].(string)
+					}
+					category, _ := m["category"].(string)
+					metricType, _ := m["type"].(string)
+					instance, _ := m["instance"].(string)
+					value := fmt.Sprintf("%v", m["value"])
+
+					// Any non-standard key becomes extra metadata (e.g. "oid").
+					var extra map[string]interface{}
+					for k, v := range m {
+						switch k {
+						case "name", "label", "value", "type", "category", "__plugin", "instance":
+							// standard keys — skip
+						default:
+							if extra == nil {
+								extra = make(map[string]interface{})
+							}
+							extra[k] = v
+						}
+					}
+
+					metricRecords = append(metricRecords, store.MetricRecord{
+						HostKey:     hostKey,
+						HostName:    hostName,
+						HostAddress: hostAddress,
+						Plugin:      pluginTag,
+						Name:        metricName,
+						Category:    category,
+						MetricType:  metricType,
+						Value:       value,
+						ValueNum:    store.ParseValueNum(value),
+						Instance:    instance,
+						Extra:       extra,
+						CollectedAt: now,
+					})
+				}
+			}
+		}
+
+		// --- Interface entity records ---
+		if ifacesAny, ok := hostDataMap["__interfaces"]; ok {
+			if ifaces, ok := ifacesAny.([]map[string]interface{}); ok && len(ifaces) > 0 {
+				ifaceRecords = append(ifaceRecords,
+					snmpplugin.InterfaceListToRecords(hostKey, hostName, hostAddress, ifaces)...)
+			}
+		}
+	}
+
+	if len(metricRecords) > 0 {
+		if err := p.Controller.Store.WriteBatch(metricRecords); err != nil {
+			fmt.Printf("  !_ store: WriteBatch error: %v\n", err)
+		} else {
+			fmt.Printf("  |_ store: wrote %d metric records\n", len(metricRecords))
+		}
+	}
+
+	if len(ifaceRecords) > 0 {
+		if err := p.Controller.Store.UpsertInterfaces(ifaceRecords); err != nil {
+			fmt.Printf("  !_ store: UpsertInterfaces error: %v\n", err)
+		} else {
+			fmt.Printf("  |_ store: upserted %d interface records\n", len(ifaceRecords))
+		}
+	}
+}
+
+// stripInternalTags removes internal keys before JSON marshalling.
+func (p *collectionPlugin) stripInternalTags(finalResults map[string]interface{}) {
+	for _, hostDataAny := range finalResults {
+		hostDataMap, ok := hostDataAny.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		// Remove the interfaces slice — it is not part of collection.json output.
+		delete(hostDataMap, "__interfaces")
+
+		metricsWrapper, ok := hostDataMap["metrics"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		metricsMap, ok := metricsWrapper["metrics"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		for _, metricAny := range metricsMap {
+			if m, ok := metricAny.(map[string]interface{}); ok {
+				delete(m, "__plugin")
+				delete(m, "instance")
+			}
+		}
+	}
 }
