@@ -1,4 +1,3 @@
-
 package main
 
 import (
@@ -9,8 +8,9 @@ import (
 
 	plugin "observer/base"
 	"observer/plugins"
-	"observer/store"
+	"observer/plugins/flow"
 	_ "observer/plugins/textui" // Import for side effect (plugin registration)
+	"observer/store"
 )
 
 func main() {
@@ -21,6 +21,7 @@ func main() {
 	perception := flag.Bool("perception", false, "Run network discovery (perception) using the 'network' plugin")
 	remote := flag.Bool("remote", false, "Send collected data to remote server(s) using the 'api' plugin")
 	ui := flag.Bool("ui", false, "Start the Text User Interface (TUI)")
+	runFlow := flag.Bool("flow", false, "Start the IPFlow (NetFlow/sFlow/IPFIX) UDP Collector")
 
 	flag.Parse()
 
@@ -51,6 +52,14 @@ func main() {
 	}
 
 	fmt.Println("Nord Observability, Reliability & Discovery")
+
+	// Handle the --flow flag to start the UDP listeners
+	if *runFlow {
+		fmt.Println("Initializing IPFlow Collection Engine...")
+		collector := flow.NewCollector(controller.Store)
+		collector.Start()
+		os.Exit(0)
+	}
 
 	// Handle the --ui flag
 	if *ui {

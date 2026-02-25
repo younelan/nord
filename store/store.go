@@ -25,6 +25,16 @@ type MetricRecord struct {
 	CollectedAt time.Time
 }
 
+// FlowRecord holds a single network flow payload for storage.
+type FlowRecord struct {
+	HostKey     string
+	HostName    string
+	HostAddress string
+	FlowType    string // "ipfix", "netflow9", "sflow"
+	Payload     []byte // The raw JSON representation
+	CollectedAt time.Time
+}
+
 // InterfaceRecord holds entity-level data for a network interface.
 // This is slowly-changing metadata (name, type, speed, MAC) as opposed to
 // per-poll time-series counters which go into MetricRecord.
@@ -46,6 +56,7 @@ type InterfaceRecord struct {
 // Implementations must be safe for concurrent use.
 type Store interface {
 	WriteBatch(records []MetricRecord) error
+	WriteFlows(records []FlowRecord) error
 	UpsertInterfaces(records []InterfaceRecord) error
 	Close() error
 }

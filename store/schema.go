@@ -3,7 +3,7 @@ package store
 type dialect int
 
 const (
-	dialectSQLite   dialect = iota
+	dialectSQLite dialect = iota
 	dialectPostgres
 	dialectMySQL
 )
@@ -36,14 +36,11 @@ func migrations(d dialect) []migration {
 			description: "add instance column to metrics; add interfaces entity table",
 			up:          v3Schema(d),
 		},
-		// Append future migrations here, e.g.:
-		// {
-		//     version:     3,
-		//     description: "add category index",
-		//     up: []string{
-		//         `CREATE INDEX idx_metrics_category ON metrics (category, collected_at DESC)`,
-		//     },
-		// },
+		{
+			version:     4,
+			description: "add data_flows_raw table for IP flow collection",
+			up:          v4Schema(d),
+		},
 	}
 }
 
@@ -178,6 +175,7 @@ func v2Schema(d dialect) []string {
 		return []string{`ALTER TABLE metrics ADD COLUMN extra TEXT`}
 	}
 }
+
 // v3Schema adds the instance column to metrics and creates the interfaces entity table.
 // instance identifies which interface/CPU/disk/etc. a metric belongs to (NULL for scalars).
 // interfaces stores slowly-changing entity metadata discovered via SNMP table walks.
@@ -243,6 +241,47 @@ func v3Schema(d dialect) []string {
 				UNIQUE(host_id, if_index)
 			)`,
 			`CREATE INDEX idx_interfaces_host ON interfaces (host_id)`,
+		}
+	}
+}
+
+// v4Schema adds the data_flows_raw table to receive NetFlow/sFlow/IPFIX data.
+// This allows the VFlow listeners to immediately store flow data before a full db overhaul.
+func v4Schema(d dialect) []string {
+	switch d {
+	case dialectPostgres:
+		return []string{
+			`CREATE TABLE IF NOT EXISTS data_flows_raw (
+				id                  BIGSERIAL PRIMARY KEY,
+				host_id             BIGINT NOT NULL REFERENCES hosts(id),
+				flow_type           VARCHAR(50) NOT NULL,
+				payload             JSONB NOT NULL,
+				collected_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)`,
+			`CREATE INDEX idx_data_flows_time ON data_flows_raw (host_id, collected_at DESC)`,
+		}
+	case dialectMySQL:
+		return []string{
+			"CREATE TABLE IF NOT EXISTS data_flows_raw (" +
+				"  id                  BIGINT AUTO_INCREMENT PRIMARY KEY," +
+				"  host_id             BIGINT NOT NULL," +
+				"  flow_type           VARCHAR(50) NOT NULL," +
+				"  payload             JSON NOT NULL," +
+				"  collected_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+				"  CONSTRAINT fk_data_flows_host FOREIGN KEY (host_id) REFERENCES hosts(id)" +
+				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+			"CREATE INDEX idx_data_flows_time ON data_flows_raw (host_id, collected_at)",
+		}
+	default: // SQLite
+		return []string{
+			`CREATE TABLE IF NOT EXISTS data_flows_raw (
+				id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+				host_id             INTEGER NOT NULL REFERENCES hosts(id),
+				flow_type           TEXT NOT NULL,
+				payload             TEXT NOT NULL,
+				collected_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`,
+			`CREATE INDEX idx_data_flows_time ON data_flows_raw (host_id, collected_at DESC)`,
 		}
 	}
 }

@@ -126,7 +126,9 @@ func (s *sqlStore) recordMigration(version int, description string) error {
 	return err
 }
 
-func (s *sqlStore) recordMigrationTx(tx interface{ Exec(string, ...interface{}) (sql.Result, error) }, version int, description string) error {
+func (s *sqlStore) recordMigrationTx(tx interface {
+	Exec(string, ...interface{}) (sql.Result, error)
+}, version int, description string) error {
 	q, args := s.insertMigrationSQL(version, description)
 	_, err := tx.Exec(q, args...)
 	return err
@@ -254,6 +256,65 @@ func (s *sqlStore) WriteBatch(records []MetricRecord) error {
 			r.Value, r.ValueNum, instance, marshalExtra(r.Extra), r.CollectedAt,
 		); err != nil {
 			fmt.Printf("  !_ store: insert %q/%q: %v\n", r.HostKey, r.Name, err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// WriteFlows persists a slice of flow records in a single transaction.
+func (s *sqlStore) WriteFlows(records []FlowRecord) error {
+	if len(records) == 0 {
+		return nil
+	}
+
+	// Resolve all host IDs before opening the transaction.
+	hostIDs := make(map[string]int64, len(records))
+	for _, r := range records {
+		if _, ok := hostIDs[r.HostKey]; ok {
+			continue
+		}
+		id, err := s.ensureHost(r.HostKey, r.HostName, r.HostAddress)
+		if err != nil {
+			fmt.Printf("  !_ store: skip host (flow) %q: %v\n", r.HostKey, err)
+			continue
+		}
+		hostIDs[r.HostKey] = id
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("store: begin tx (flow): %w", err)
+	}
+	defer tx.Rollback() //nolint:errcheck
+
+	var insertQ string
+	if s.d == dialectPostgres {
+		insertQ = "INSERT INTO data_flows_raw " +
+			"(host_id, flow_type, payload, collected_at) " +
+			"VALUES ($1, $2, $3, $4)"
+	} else {
+		insertQ = "INSERT INTO data_flows_raw " +
+			"(host_id, flow_type, payload, collected_at) " +
+			"VALUES (?, ?, ?, ?)"
+	}
+
+	stmt, err := tx.Prepare(insertQ)
+	if err != nil {
+		return fmt.Errorf("store: prepare insert flow: %w", err)
+	}
+	defer stmt.Close()
+
+	for _, r := range records {
+		hostID, ok := hostIDs[r.HostKey]
+		if !ok {
+			continue
+		}
+
+		if _, err := stmt.Exec(
+			hostID, r.FlowType, string(r.Payload), r.CollectedAt,
+		); err != nil {
+			fmt.Printf("  !_ store: insert flow %q/%q: %v\n", r.HostKey, r.FlowType, err)
 		}
 	}
 
