@@ -1,0 +1,197 @@
+    
+    <div class="widgetheader">
+    <h2><i class="fas fa-network-wired"></i> {{$Ops Wellness}}</h2>
+    </div>
+    
+    <div class="top-toolbar">
+    <div class="mass-actions">
+    <!--<button id="selectAll" onclick="toggleSelect()">Select</button>-->
+    <button id="collapseAll" class="collapse-all-btn" onclick="toggleCollapseAll()">{{$Collapse}}</button>
+    </div>
+    <!--
+    <div class="listbox">
+    <select name="action" id="actionSelect">
+    <option value="action1">Details</option>
+    <option value="action2">Queue</option>
+    <option value="action3">Statistics</option>
+    </select>
+    <button class="submit-btn" onclick="submitForm()">Submit</button>
+    </div>
+  -->
+    </div>
+    
+    <div class="host-container" id="hostContainer">
+    <!-- Host rows will be dynamically populated here -->
+    </div>
+    
+    <script>
+    // Populate hosts with metrics and group them if specified
+    function populateHosts(hostsData) {
+        let hostsContainer = document.querySelector('.host-container');
+        let groups = {}; // Object to hold groups and their HTML content
+
+        hostsData.forEach(host => {
+            let metricsColumns = populateMetricsContainer(host);
+            // if(host.plugin==undefined) {
+            //     host.plugin="device"
+            // } 
+            let hostRow = `
+                <div class="host-row">
+                <div class="hostname-header ${host.status}" onclick="toggleDetails(this)">
+                    <div class='hostname-icon'><i class="fas fa-server"></i></div>
+                    <div class='hostname-label'><!--<input type="checkbox" name="${host.id}" ${host.selected ? 'checked' : ''}>-->
+                    ${host.name} <div class='device-chevron'><i class="fas fa-chevron-down collapse-icon"></i></div></div>
+                ${host.extendedStatus ? `<div class="host-summary">${host.extendedStatus}</div>` : ''}
+                
+                </div>
+                <div class="details ${host.collapsed ? '' : 'show'}">
+                <div class="action-buttons">
+                ${host.actions ? host.actions.map(action => `<a class="action" href="?plugin=${action.plugin}&device_id=${host.id}&page=${action.page}"><i class="fas fa-info-circle"></i>${action.name}</a>`).join('') : ''}
+                </div>
+                ${metricsColumns}
+                </div>
+                </div>
+            `;
+
+            // Check if the host has a group property
+            if (host.group) {
+                // If the group doesn't exist, create it
+                if (!groups[host.group]) {
+                    groups[host.group] = {
+                    header: `<div class="group-header" onclick="toggleGroupDetails('${host.group}');"><i class="fa fa-folder"></i> ${host.group} 
+                        <div class='device-chevron'><i class="fas fa-chevron-down collapse-icon"></i></div></div>`,
+                    hosts: []
+                    };
+                }
+                // Add the host to the group
+                groups[host.group].hosts.push(hostRow);
+            } else {
+                // If no group is specified, add the host at the top level
+                hostsContainer.insertAdjacentHTML('beforeend', hostRow);
+            }
+        });
+
+        // Append groups to the container
+        for (let groupName in groups) {
+            let groupHtml = `
+                <div class="group" id="group-${groupName}">
+                <div style='float:right;margin:10px;'>
+                    <div class="group-toggle" onclick="toggleHosts('${groupName}');">+</div>
+                <!-- <button class="group-select" onclick="toggleGroupSelection('${groupName}');">✓</button> -->
+                </div>
+                    ${groups[groupName].header}
+                <div class="group-details">
+                    
+                ${groups[groupName].hosts.join('')}
+                </div>
+                </div>
+            `;
+            hostsContainer.insertAdjacentHTML('beforeend', groupHtml);
+        }
+    }
+
+    // Toggle selection state of all hosts within a group
+    function toggleGroupSelection(groupName) {
+        let group = document.querySelector(`#group-${groupName}`);
+        let hostCheckboxes = group.querySelectorAll('.hostname-header input[type="checkbox"]');
+        let selectButton = group.querySelector('.group-select');
+
+        // Determine new selection state based on current state
+        let select = Array.from(hostCheckboxes).every(checkbox => !checkbox.checked);
+        hostCheckboxes.forEach(checkbox => {
+        checkbox.checked = select;
+        });
+        selectButton.innerHTML = select ? '✕' : '✓';
+    }
+
+    // Toggle visibility of a group's hosts
+    function toggleHosts(groupName) {
+        let groupDetails = document.querySelector(`#group-${groupName} .group-details`);
+        let hostRows = groupDetails.querySelectorAll('.host-row .details');
+        hostRows.forEach(details => {
+            details.classList.toggle('show');
+        });
+    }
+
+    // Select or unselect all hosts within a group
+    function selectGroup(groupName, select) {
+        let group = document.querySelector(`#group-${groupName}`);
+        let hostCheckboxes = group.querySelectorAll('.hostname-header input[type="checkbox"]');
+        hostCheckboxes.forEach(checkbox => {
+            checkbox.checked = select;
+        });
+    }
+
+    // Toggle visibility of a group's details
+    function toggleGroupDetails(groupName) {
+        let groupDetails = document.querySelector(`#group-${groupName} .group-details`);
+        groupDetails.classList.toggle('show');
+    }
+
+    // Select or unselect all hosts within a group
+    function selectGroup(groupName, select) {
+        let group = document.querySelector(`#group-${groupName}`);
+        let hostCheckboxes = group.querySelectorAll('.hostname-header input[type="checkbox"]');
+        hostCheckboxes.forEach(checkbox => {
+            checkbox.checked = select;
+        });
+    }
+
+    // Toggle details of a host
+    function toggleDetails(element) {
+        let details = element.nextElementSibling;
+        details.classList.toggle('show');
+    }
+
+    // Toggle visibility of a group
+    function toggleGroup(element) {
+        let groupDetails = element.nextElementSibling;
+        groupDetails.classList.toggle('show');
+    }
+
+    
+    // Populate metrics container
+    function populateMetricsContainer(hostData) {
+        let htmlContent = '';
+        
+        Object.keys(hostData.metrics).forEach(category => {
+        const metrics = Object.values(hostData.metrics[category]);
+        const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1); // Capitalize the category name
+        htmlContent += createListRow(categoryLabel, metrics);
+        });
+        return htmlContent;
+        }
+        
+        // Toggle details of a host
+        function toggleDetails(element) {
+        let details = element.nextElementSibling;
+        details.classList.toggle('show');
+    }
+    
+    // Select or unselect all checkboxes
+    function toggleSelect() {
+        let checkboxes = document.querySelectorAll('.hostname-header input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+        checkbox.checked = !checkbox.checked;
+    });
+    }
+    
+    // Collapse or show all details
+    function toggleCollapseAll() {
+        let detailsElements = document.querySelectorAll('.details');
+        detailsElements.forEach(details => {
+        details.classList.toggle('show');
+        });
+    }
+    
+    // ... Other functions ...
+    
+    let initialHosts = {{$hostlist}}
+    populateHosts(initialHosts);
+</script>
+<style>
+
+</style>
+<div class="towerlogo" >
+    <img  height="100" width="auto" src='images/TowerLogo.png'>
+</div>

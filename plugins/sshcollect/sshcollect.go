@@ -231,3 +231,54 @@ func (p *sshCollectPlugin) loadDeviceDef(deviceType string) (*DeviceDef, error) 
 	err = json.Unmarshal(defFile, &def)
 	return &def, err
 }
+
+
+// ShowPage renders the SSH collection configuration page
+func (p *sshCollectPlugin) ShowPage(params map[string]string) (string, error) {
+	page := params["page"]
+	if page == "" {
+		page = "router"
+	}
+
+	switch page {
+	case "router":
+		fallthrough
+	default:
+		return p.showConfig()
+	}
+}
+
+func (p *sshCollectPlugin) showConfig() (string, error) {
+	// Load router.json data
+	routerData, err := ioutil.ReadFile("data/router.json")
+	if err != nil {
+		return "<h1>System Information</h1><p>No router configuration data available</p>", nil
+	}
+
+	var routerConfig map[string]interface{}
+	if err := json.Unmarshal(routerData, &routerConfig); err != nil {
+		return "<h1>System Information</h1><p>Error parsing router configuration</p>", nil
+	}
+
+	// Build HTML table
+	var output strings.Builder
+	output.WriteString("<h1>System Information</h1>\n")
+	output.WriteString("<table class='config-table'>\n")
+	output.WriteString("<tr><th class='config-category config-column'>Category</th><th class='config-subcategory config-column'>Subcategory</th><th class='config-column config-value'>Value</th></tr>\n")
+
+	// Iterate through categories
+	for category, entries := range routerConfig {
+		if entriesMap, ok := entries.(map[string]interface{}); ok {
+			for key, value := range entriesMap {
+				output.WriteString("<tr>")
+				output.WriteString(fmt.Sprintf("<td class='config-category config-column'>%s</td>", category))
+				output.WriteString(fmt.Sprintf("<td class='config-subcategory config-column'>%s</td>", key))
+				output.WriteString(fmt.Sprintf("<td class='config-column config-value'>%v</td>", value))
+				output.WriteString("</tr>\n")
+			}
+		}
+	}
+
+	output.WriteString("</table>\n")
+	return output.String(), nil
+}

@@ -10,6 +10,7 @@ require (
 	github.com/gosnmp/gosnmp v1.42.1
 	github.com/lib/pq v1.11.2
 	github.com/shirou/gopsutil/v3 v3.24.5
+	github.com/tetratelabs/wazero v1.11.0
 	golang.org/x/crypto v0.43.0
 	modernc.org/sqlite v1.46.1
 )
@@ -47,7 +48,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/net v0.45.0 // indirect
-	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.30.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	modernc.org/libc v1.67.6 // indirect

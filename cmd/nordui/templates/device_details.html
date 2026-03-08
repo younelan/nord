@@ -1,0 +1,23 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="device-details-container" id="deviceDetails">
+    <!-- Device details will be dynamically populated here -->
+</div>
+
+<div class="back-button-container">
+    <a href="/devices" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Devices
+    </a>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script src="/static/js/device-details.js"></script>
+<script>
+// Initialize with server data
+if (typeof deviceData !== 'undefined') {
+    renderDeviceDetails(deviceData);
+}
+</script>
+{{end}}

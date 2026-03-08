@@ -8,6 +8,17 @@ import (
 	"observer/store"
 )
 
+// MenuItem represents a menu entry
+type MenuItem struct {
+	Text     string               `json:"text"`
+	Weight   int                  `json:"weight"`
+	Plugin   string               `json:"plugin,omitempty"`
+	Page     string               `json:"page,omitempty"`
+	Action   string               `json:"action,omitempty"`
+	URL      string               `json:"url,omitempty"`
+	Children map[string]MenuItem  `json:"children,omitempty"`
+}
+
 // Plugin is the interface that all plugins must implement.
 type Plugin interface {
 	Name() string
@@ -15,6 +26,8 @@ type Plugin interface {
 	OnCommand(args map[string]string) error
 	OnUpdate() error
 	OnCollect(options map[string]interface{}) (map[string]interface{}, error)
+	ShowPage(params map[string]string) (string, error)
+	GetMenus() map[string]MenuItem
 }
 
 // BasePlugin is a helper struct that plugins can embed for default functionality.
@@ -45,6 +58,16 @@ func (p *BasePlugin) OnUpdate() error {
 // OnCollect is the default collect handler.
 func (p *BasePlugin) OnCollect(options map[string]interface{}) (map[string]interface{}, error) {
 	return nil, fmt.Errorf("OnCollect not implemented")
+}
+
+// ShowPage is the default page handler.
+func (p *BasePlugin) ShowPage(params map[string]string) (string, error) {
+	return "", fmt.Errorf("ShowPage not implemented")
+}
+
+// GetMenus returns the menu items for this plugin.
+func (p *BasePlugin) GetMenus() map[string]MenuItem {
+	return nil
 }
 
 // Controller manages all the registered plugins and shared resources.

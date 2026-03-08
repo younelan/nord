@@ -1,0 +1,21 @@
+
+
+    <h1 class="widgetheader">{{$Mail Queue}}</h1>
+    <div class="mb-3 position-relative">
+        <button class="btn btn-secondary" id="columnToggle">
+            {{$Show/Hide}}
+        </button>
+        <ul class="dropdown-menu position-absolute" id="columnMenu" style="display: none;">
+            <!-- Columns will be dynamically inserted here -->
+        </ul>
+    </div>
+    
+    <table id="mail-queue-table" class="queue-table">
+
+    </table>
+
+    <ul>
+        <li>{{$Drag a field to Move}}</li>
+        <li>{{$Click a field to Sort that Column}}</li>
+        <li>{{$Click Hide/Show to Hide/Show Fields}}</li>
+    </ul>

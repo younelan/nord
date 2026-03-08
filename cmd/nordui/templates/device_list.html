@@ -1,0 +1,36 @@
+{{template "base" .}}
+
+{{define "content"}}
+<div class="widget-header">
+    <h2><i class="fas fa-network-wired"></i> Network Health</h2>
+</div>
+
+<div class="top-toolbar">
+    <div class="mass-actions">
+        <button id="collapseAll" class="btn btn-secondary" onclick="toggleCollapseAll()">
+            <i class="fas fa-compress-alt"></i> Collapse All
+        </button>
+        <button id="refreshBtn" class="btn btn-primary" onclick="refreshHosts()">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+</div>
+
+<div class="host-container" id="hostContainer">
+    <!-- Host rows will be dynamically populated here -->
+</div>
+
+<div class="tower-logo">
+    <img height="100" width="auto" src="/static/images/logo.png" alt="Nord Logo" onerror="this.style.display='none'">
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script src="/static/js/device-list.js"></script>
+<script>
+// Initialize with server data
+if (typeof hostsData !== 'undefined') {
+    populateHosts(hostsData);
+}
+</script>
+{{end}}
